@@ -1,0 +1,7 @@
+Started
+Number of messages received: 1
+Number of messages received: 2
+Number of messages received: 3
+Number of messages sent: 1
+Number of messages sent: 2
+Number of messages sent: 3 
