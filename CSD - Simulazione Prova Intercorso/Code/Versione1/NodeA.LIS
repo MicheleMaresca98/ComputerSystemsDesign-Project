@@ -1,0 +1,65 @@
+00008000                                     1  		ORG		$8000
+00008000                                     2  MAIN	
+00008000  =00002002                          3  USART		EQU		$2002
+00008000                                     4  
+00008000  =00000004                          5  N		EQU		4			*LUNGHEZZA MESSAGGIO
+00008000  =00000005                          6  M		EQU		5			*NUMERO MESSAGGI DA INVIARE
+00008000                                     7  
+00008000  4EB9 00008066                      8  		JSR		INIT
+00008006                                     9  
+00008006                                    10  							*ABILITA INTERRUPT (SMASCHERO 111 DELLE INTERRUZIONI DA SR)
+00008006  40C0                              11  		MOVE.W	SR,D0
+00008008  0240 F8FF                         12  		ANDI.W	#$F8FF,D0		*NON PASSA A STATO UTENTE MA RIMANGO IN SUPERVISORE IN MODO DA INVIARE I MESSAGGI DAL MAIN
+0000800C  46C0                              13  		MOVE.W	D0,SR
+0000800E                                    14  	
+0000800E  4EB9 00008016                     15  		JSR		INVIO
+00008014  60FE                              16  LOOP		BRA		LOOP
+00008016                                    17  
+00008016  48E7 FCFC                         18  INVIO		MOVEM.L	D0-D5/A0-A5,-(A7)	
+0000801A  207C 00002002                     19  		MOVEA.L	#USART,A0
+00008020  4282                              20  		CLR.L		D2			*CONTATORE NUMERO CARATTERI INVIATI
+00008022  4283                              21  		CLR.L		D3			*CONTATORE NUMERO MESSAGGI INVIATI
+00008024  227C 00008300                     22  INPUT		MOVEA.L	#MEX1,A1
+0000802A  383C 0001                         23  		MOVE.W	#1,D4
+0000802E  C8FC 0004                         24  		MULU		#N,D4
+00008032  C8C3                              25  		MULU		D3,D4
+00008034  D3C4                              26  		ADDA.L	D4,A1		
+00008036  1028 0001                         27  WAIT0		MOVE.B	1(A0),D0
+0000803A  0200 0080                         28  		ANDI.B		#%10000000,D0	*ATTENDE CHE SI ATTIVA DSR
+0000803E  67F6                              29  		BEQ		WAIT0
+00008040  1028 0001                         30  WAIT1		MOVE.B	1(A0),D0
+00008044  0200 0001                         31  		ANDI.B		#%00000001,D0	*ATTENDE CHE IL TRASFERIMENTO E' AVVENUTO (DATAOUT CARICATO TOTALMENTE NELLO SHIFT REGISTER)
+00008048  67F6                              32  		BEQ		WAIT1
+0000804A  1099                              33  		MOVE.B	(A1)+,(A0)
+0000804C  5242                              34  		ADDI.W	#1,D2			*INCREMENTA NUMERO CARATTERI INVIATI
+0000804E  B47C 0004                         35  		CMP.W	#N,D2			*CONTROLLA SE HA INVIATO TUTTI I CARATTERI DEL MESSAGGIO
+00008052  66E2                              36  		BNE		WAIT0
+00008054  343C 0000                         37  		MOVE.W	#0,D2			*AZZERA NUMERO CARATTERI INVIATI
+00008058  5243                              38  		ADDI.W	#1,D3			*INCREMENTA NUMERO MESSAGGI INVIATI
+0000805A  B67C 0005                         39  		CMP.W	#M,D3			*CONTROLLA SE HA INVIATO TUTTI I MESSAGGI
+0000805E  66C4                              40  		BNE		INPUT
+00008060  4CDF 3F3F                         41  		MOVEM.L	(A7)+,D0-D5/A0-A5
+00008064  4E75                              42  		RTS
+00008066                                    43  
+00008066  2F08                              44  INIT		MOVE.L	A0,-(A7)
+00008068  207C 00002002                     45  		MOVEA.L	#USART,A0
+0000806E  117C 005D 0001                    46  		MOVE.B	#%01011101,1(A0) *ABILITO TRASMISSIONE ASINCORNA CON 8 BIT PER DATO E BIT DI PARITA' E DUE BIT DI STOP
+00008074  117C 0033 0001                    47  		MOVE.B	#%00110011,1(A0) *NON ATTIVO RICEVITORE, ABILITO TRASMETTITORE, ATTIVO DTR E RTS E AZZERO STATUS
+0000807A  205F                              48  		MOVE.L	(A7)+,A0
+0000807C  4E75                              49  		RTS
+0000807E                                    50  
+0000807E                                    51  *INTERRUZIONE LIV.4 AUTOVET. 24+4 = 28 IN ROM A $70 PUNTA A $8800 LEGATO A TxRDY (QUANDO DA DATAOUT SERIALE IL VALORE VIENE CARICATO COMPLETAMENTE NELLO SHIFT REGISTER)
+00008800                                    52  		ORG		$8800
+00008800  4E73                              53  INT4		RTE
+00008802                                    54  
+00008802                                    55  		*AREA DATI
+00008300                                    56  		ORG		$8300		*MESSAGGI DA TRASMETTERE
+00008300  01 02 03 04                       57  MEX1		DC.B		1,2,3,4
+00008304  05 06 07 08                       58  MEX2		DC.B		5,6,7,8
+00008308  09 0A 0B 0C                       59  MEX3		DC.B		9,$A,$B,$C
+0000830C  01 02 03 04                       60  SPURI		DC.B		1,2,3,4
+00008310  05 06 07 08                       61  SPURI2	DC.B		5,6,7,8
+00008314                                    62  		END		MAIN
+
+No errors detected
+No warnings generated

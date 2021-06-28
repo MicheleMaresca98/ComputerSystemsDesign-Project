@@ -1,0 +1,53 @@
+		ORG		$8000
+MAIN
+PIADA		EQU		$2004
+PIACA		EQU		$2005
+PIADB		EQU		$2006
+PIACB		EQU		$2007
+
+		JSR		INIZ
+		MOVE.W	SR,D0
+		ANDI.W	#$F8FF,D0		*F anche al più significativo perchè non passo a stato utente
+		MOVE.W	D0,SR
+		JSR		INVIO
+LOOP		BRA		LOOP
+	
+INIZ		MOVE.B	#0,PIACB
+		MOVE.B	#$FF,PIADB
+		MOVE.B	#%00100100,PIACB
+		RTS
+
+
+INVIO		MOVEM.L	A0-A2/D0-D4,-(A7)
+		MOVEA.L	#PIADB,A1
+		MOVEA.L	#PIACB,A2
+		MOVEA.L	#CAR,A0
+		CLR.L		D1
+INPUT		CLR.L		D3		
+		*ATTESA INVIO CARATTERE
+CICLO		ADDI.W	#1,D3
+		CMP.W	#10,D3
+		BNE		CICLO
+
+		MOVE.B	(A1),D0		*lettura fittizia
+		MOVE.B	$0(A0,D1),D2
+		MOVE.B	D2,(A1)
+
+CICLO2	MOVE.B	(A2),D4	
+		ANDI.B		#$80,D4
+		BEQ		CICLO2	
+
+		ADDI.W	#1,D1
+
+		CMP.W	#M,D1
+		BNE		INPUT
+		MOVEM.L	(A7)+,A0-A2/D0-D4
+		RTS
+		
+		ORG		$8300
+*AREA DATI
+M		EQU		8
+CAR		DC.B		1,2,3,4,5,8,7,8
+		END		MAIN
+
+

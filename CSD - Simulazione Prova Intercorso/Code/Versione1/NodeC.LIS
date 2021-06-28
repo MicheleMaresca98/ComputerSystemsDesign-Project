@@ -1,0 +1,54 @@
+00008000                                     1  		ORG		$8000
+00008000                                     2  MAIN
+00008000  =00002004                          3  PIADA		EQU		$2004
+00008000  =00002005                          4  PIACA		EQU		$2005
+00008000  =00002006                          5  PIADB		EQU		$2006
+00008000  =00002007                          6  PIACB		EQU		$2007
+00008000                                     7  
+00008000  4EB9 00008016                      8  		JSR		INIZ
+00008006  40C0                               9  		MOVE.W	SR,D0
+00008008  0240 F8FF                         10  		ANDI.W	#$F8FF,D0		*F anche al più significativo perchè non passo a stato utente
+0000800C  46C0                              11  		MOVE.W	D0,SR
+0000800E  4EB9 0000802A                     12  		JSR		INVIO
+00008014  60FE                              13  LOOP		BRA		LOOP
+00008016                                    14  	
+00008016  11FC 0000 2007                    15  INIZ		MOVE.B	#0,PIACB
+0000801C  11FC 00FF 2006                    16  		MOVE.B	#$FF,PIADB
+00008022  11FC 0024 2007                    17  		MOVE.B	#%00100100,PIACB
+00008028  4E75                              18  		RTS
+0000802A                                    19  
+0000802A                                    20  
+0000802A  48E7 F8E0                         21  INVIO		MOVEM.L	A0-A2/D0-D4,-(A7)
+0000802E  227C 00002006                     22  		MOVEA.L	#PIADB,A1
+00008034  247C 00002007                     23  		MOVEA.L	#PIACB,A2
+0000803A  207C 00008300                     24  		MOVEA.L	#CAR,A0
+00008040  4281                              25  		CLR.L		D1
+00008042  4283                              26  INPUT		CLR.L		D3		
+00008044                                    27  		*ATTESA INVIO CARATTERE
+00008044  5243                              28  CICLO		ADDI.W	#1,D3
+00008046  B67C 000A                         29  		CMP.W	#10,D3
+0000804A  66F8                              30  		BNE		CICLO
+0000804C                                    31  
+0000804C  1011                              32  		MOVE.B	(A1),D0		*lettura fittizia
+0000804E  1430 1000                         33  		MOVE.B	$0(A0,D1),D2
+00008052  1282                              34  		MOVE.B	D2,(A1)
+00008054                                    35  
+00008054  1812                              36  CICLO2	MOVE.B	(A2),D4	
+00008056  0204 0080                         37  		ANDI.B		#$80,D4
+0000805A  67F8                              38  		BEQ		CICLO2	
+0000805C                                    39  
+0000805C  5241                              40  		ADDI.W	#1,D1
+0000805E                                    41  
+0000805E  B27C 0008                         42  		CMP.W	#M,D1
+00008062  66DE                              43  		BNE		INPUT
+00008064  4CDF 071F                         44  		MOVEM.L	(A7)+,A0-A2/D0-D4
+00008068  4E75                              45  		RTS
+0000806A                                    46  		
+00008300                                    47  		ORG		$8300
+00008300                                    48  *AREA DATI
+00008300  =00000008                         49  M		EQU		8
+00008300  01 02 03 04 05 08 07 08           50  CAR		DC.B		1,2,3,4,5,8,7,8
+00008308                                    51  		END		MAIN
+
+No errors detected
+No warnings generated

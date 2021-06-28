@@ -1,0 +1,132 @@
+			ORG		$8300				*area main
+MAIN
+USARTP		EQU		$2002				*usart pari
+USARTD		EQU		$2003				*usart dispari
+PIADA			EQU		$2004
+PIACA			EQU		$2005
+PIADB			EQU		$2006
+PIACB			EQU		$2007
+			JSR		INIT
+			MOVE.W	SR,D0
+			ANDI.W	#$D8FF,D0			*smaschera interrupt
+			MOVE.W	D0,SR
+LOOP			BRA		LOOP
+
+INIT			MOVE.B	#0,PIACA
+			MOVE.B	#$00,PIADA			*inizializza PIA porto A
+			MOVE.B	#%00100101,PIACA
+									*inizializzazione usart
+			MOVE.B	#%01011101,USARTD		*modo usart
+			MOVE.B	#%00110110,USARTD		*controllo usart
+			RTS
+
+*ISR PER INTERRUPT LIVELLO 3 LEGATA ALLA RICEZIONE SULLA USART, AUTOVETTORE 27 = ((24 + 3)*4). 
+*IN ROM A $6C, PUNTA AD INDIRIZZO $8700
+			ORG		$8700
+INT3			JSR		ISR_USART_RIC
+			RTE
+
+ISR_USART_RIC	TAS		SEM
+			BEQ		CONTIN
+			MOVE.B	#1,ATTESA_A
+			RTS
+CONTIN		TST.B		NCRA				*se non ha ricevuto neanche un carattere controlla il FLAG_T, altrimenti
+			BNE		PROS				*è in ricezione e deve terminare la ricezione dell'intero messaggio
+			TST.B		FLAG_T
+			BEQ		PROS
+			MOVE.B	#%00100100,PIACA		*nel caso in cui è diverso da 0 disabilita le interrupt
+			MOVE.B	#$FF,USARTD			*disabilita USART
+			RTS
+PROS			MOVEM.L	D0-D5/A0-A5,-(A7)		*salva registri che "sporca"
+			MOVEA.L	#USARTP,A0
+
+			MOVE.B	1(A0),D3			*controlla se si è verificato qualche errore e in caso affermativo ripristina
+			ANDI.B		#$38,D3			*i flag di errore dal registro di stato
+			BEQ		NOERR
+			MOVE.B	#$37,1(A0)
+NOERR		MOVE.B	(A0),D0				*il carattere è ricevuto ma non lo memorizza
+
+			MOVE.B	NCRA,D1
+			ADDI.B		#1,D1	
+			MOVE.B	D1,NCRA
+			CMP.B		#N,D1
+			BNE		ALTRIM
+			CMP.B		#0,D0
+			BNE		AVANTI2
+			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#%00100100,PIACA
+			MOVE.B	#$FF,USARTD
+			RTS
+AVANTI2		MOVE.B	NMRA,D2
+			ADDI.B		#1,D2
+			MOVE.B	D2,NMRA
+			CMP.B		#M,D2
+			BNE		ALTR2
+			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#%00100100,PIACA
+			MOVE.B	#$FF,USARTD
+			RTS
+ALTR2			MOVE.B	#0,NCRA			*azzera il numero di caratteri ricevuti da A
+			TST.B		FLAG_T
+			BEQ		PROS2
+			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#%00100100,PIACA
+			MOVE.B	#$FF,USARTD
+			RTS
+PROS2			TST.B		ATTESA_C
+			BEQ		TERMINA
+SVEGC									*C è in attesa è viene svegliato
+			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#0,ATTESA_C
+			MOVE.B	#0,SEM
+			JSR		ISR_PIA_RIC
+			RTS
+TERMINA		MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#0,SEM
+			RTS
+ALTRIM		TST.B		ATTESA_C
+			BEQ		TERMINA
+			BRA		SVEGC
+
+
+*ISR PER INTERRUPT LIVELLO 4 LEGATA ALLA RICEZIONE SULLA PIA, AUTOVETTORE 28 = ((24 + 4)*4). 
+*IN ROM A $70, PUNTA AD INDIRIZZO $8900
+			ORG		$8900
+INT4			JSR		ISR_PIA_RIC
+			RTE
+
+ISR_PIA_RIC		TAS		SEM
+			BEQ		CONT4
+			MOVE.B	#1,ATTESA_C			*C si mette in attesa
+			RTS
+CONT4			MOVEM.L	D0-D5/A0-A5,-(A7)
+			MOVEA.L	#PIADA,A0
+			MOVE.B	(A0),D0				*riceve ma non memorizza
+			MOVE.B	NCRC,D1
+			ADDI.B		#1,D1
+			MOVE.B	D1,NCRC
+			CMP.B		#2,D1
+			BNE		AT4
+			MOVE.B	#1,FLAG_T			*mette FLAG_T ad 1
+			TST.B		ATTESA_A
+			BNE		WKUP
+AT4			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#0,SEM			*unlock
+			RTS
+WKUP			MOVEM.L	(A7)+,D0-D5/A0-A5
+			MOVE.B	#0,ATTESA_A
+			MOVE.B	#0,SEM
+			JSR		ISR_USART_RIC
+			RTS
+
+			ORG		$8000				*area dati
+M			EQU		3				*numero messaggi
+N			EQU		4				*lunghezza mmessaggio
+FLAG_T		DC.B		0				*flag termina
+SEM			DC.B		0
+NCRA			DC.B		0				*numero di caratteri ricevuti da A
+NCRC			DC.B		0				*numeri di caratteri ricevuti da C
+ATTESA_A		DC.B		0
+ATTESA_C		DC.B		0
+NMRA			DC.B		0				*numero di messaggi ricevuti da A
+			END		MAIN

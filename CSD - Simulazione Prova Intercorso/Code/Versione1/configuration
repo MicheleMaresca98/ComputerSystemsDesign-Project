@@ -1,0 +1,51 @@
+	CHIP Name: M68000
+Type: CPU.    	Identif: 01.	BUS: 0002.
+Addres 1: 00009000.	Address 2: 00009200.
+Com1: 0000.  Com2: 0000.  Com3: 0000.  Com4: 0000.
+
+	CHIP Name: Memory
+Type: MMU/BUS.	Identif: 02.	BUS: 0000.
+Addres 1: 00008000.	Address 2: 00000000.
+Com1: 0000.  Com2: 0010.  Com3: 0008.  Com4: 0000.
+
+	CHIP Name: M6821PIA
+Type: Device. 	Identif: 03.	BUS: 0002.
+Addres 1: 00002004.	Address 2: 00002007.
+Com1: 0001.  Com2: 0004.  Com3: 0002.  Com4: 0207.
+
+	CHIP Name: I8251USART
+Type: Device. 	Identif: 04.	BUS: 0002.
+Addres 1: 00002002.	Address 2: 00002003.
+Com1: 0001.  Com2: 0003.  Com3: 0001.  Com4: 000A.
+
+	CHIP Name: M68000
+Type: CPU.    	Identif: 05.	BUS: 0006.
+Addres 1: 00009000.	Address 2: 00009200.
+Com1: 0000.  Com2: 0000.  Com3: 0000.  Com4: 0000.
+
+	CHIP Name: Memory
+Type: MMU/BUS.	Identif: 06.	BUS: 0000.
+Addres 1: 00008000.	Address 2: 00000000.
+Com1: 0000.  Com2: 0010.  Com3: 0008.  Com4: 0000.
+
+	CHIP Name: M6821PIA
+Type: Device. 	Identif: 07.	BUS: 0006.
+Addres 1: 00002004.	Address 2: 00002007.
+Com1: 0005.  Com2: 0004.  Com3: 0003.  Com4: 0203.
+
+	CHIP Name: M68000
+Type: CPU.    	Identif: 08.	BUS: 0009.
+Addres 1: 00009000.	Address 2: 00009200.
+Com1: 0000.  Com2: 0000.  Com3: 0000.  Com4: 0000.
+
+	CHIP Name: Memory
+Type: MMU/BUS.	Identif: 09.	BUS: 0000.
+Addres 1: 00008000.	Address 2: 00000000.
+Com1: 0000.  Com2: 0010.  Com3: 0008.  Com4: 0000.
+
+	CHIP Name: I8251USART
+Type: Device. 	Identif: 0A.	BUS: 0009.
+Addres 1: 00002002.	Address 2: 00002003.
+Com1: 0008.  Com2: 0003.  Com3: 0004.  Com4: 0004.
+
+ 
