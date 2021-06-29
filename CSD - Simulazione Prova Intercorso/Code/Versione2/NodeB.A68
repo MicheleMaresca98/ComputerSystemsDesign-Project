@@ -23,21 +23,32 @@ INIT			MOVE.B	#0,PIACA
 *ISR PER INTERRUPT LIVELLO 3 LEGATA ALLA RICEZIONE SULLA USART, AUTOVETTORE 27 = ((24 + 3)*4). 
 *IN ROM A $6C, PUNTA AD INDIRIZZO $8700
 			ORG		$8700
-INT3			JSR		ISR_USART_RIC
+INT3			TST.B		NCRA				*se non ha ricevuto neanche un carattere controlla il FLAG_T, altrimenti
+			BNE		PROS				*è in ricezione e deve terminare la ricezione dell'intero messaggio
+			JSR		CHECK0
+			RTE
+PROS			JSR		USART_RIC
 			RTE
 
-ISR_USART_RIC	TAS		SEM
+
+CHECK0		TAS		SEM
 			BEQ		CONTIN
-			MOVE.B	#1,ATTESA_A
+			MOVE.B	#1,ATT_A_0
 			RTS
-CONTIN		TST.B		NCRA				*se non ha ricevuto neanche un carattere controlla il FLAG_T, altrimenti
-			BNE		PROS				*è in ricezione e deve terminare la ricezione dell'intero messaggio
-			TST.B		FLAG_T
-			BEQ		PROS
-			MOVE.B	#%00100100,PIACA		*nel caso in cui è diverso da 0 disabilita le interrupt
+CONTIN		TST.B		FLAG_T
+			BEQ		PROS0
+			JSR		DISABILITA
+			MOVE.B	#0,SEM
+			RTS
+PROS0			MOVE.B	#0,SEM
+			JSR		USART_RIC
+			RTS
+
+DISABILITA		MOVE.B	#%00100100,PIACA		*disabilita le interrupt pia
 			MOVE.B	#$FF,USARTD			*disabilita USART
 			RTS
-PROS			MOVEM.L	D0-D5/A0-A5,-(A7)		*salva registri che "sporca"
+
+USART_RIC		MOVEM.L	D0-D5/A0-A5,-(A7)		*salva registri che "sporca"
 			MOVEA.L	#USARTP,A0
 
 			MOVE.B	1(A0),D3			*controlla se si è verificato qualche errore e in caso affermativo ripristina
@@ -54,8 +65,7 @@ NOERR		MOVE.B	(A0),D0				*il carattere è ricevuto ma non lo memorizza
 			CMP.B		#0,D0
 			BNE		AVANTI2
 			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#%00100100,PIACA
-			MOVE.B	#$FF,USARTD
+			JSR		DISABILITA
 			RTS
 AVANTI2		MOVE.B	NMRA,D2
 			ADDI.B		#1,D2
@@ -63,43 +73,45 @@ AVANTI2		MOVE.B	NMRA,D2
 			CMP.B		#M,D2
 			BNE		ALTR2
 			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#%00100100,PIACA
-			MOVE.B	#$FF,USARTD
+			JSR		DISABILITA
 			RTS
 ALTR2			MOVE.B	#0,NCRA			*azzera il numero di caratteri ricevuti da A
-			TST.B		FLAG_T
-			BEQ		PROS2
 			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#%00100100,PIACA
-			MOVE.B	#$FF,USARTD
+			JSR		CHECK1
 			RTS
-PROS2			TST.B		ATTESA_C
+ALTRIM		MOVEM.L	(A7)+,D0-D5/A0-A5
+			TAS		SEM
+			BEQ		GOON
+			RTS
+GOON			JSR		CHECKC
+			RTS
+
+CHECK1		TAS		SEM
+			BEQ		CNTN
+			MOVE.B	#0,ATT_A_1
+			RTS
+CNTN			TST.B		FLAG_T
+			BEQ		PROS2
+			JSR		DISABILITA
+			RTS
+PROS2			JSR		CHECKC
+			RTS
+
+CHECKC		TST.B		ATT_C
 			BEQ		TERMINA
 SVEGC									*C è in attesa è viene svegliato
-			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#0,ATTESA_C
+			MOVE.B	#0,ATT_C
 			MOVE.B	#0,SEM
-			JSR		ISR_PIA_RIC
+			JSR		SET_FLAG
 			RTS
-TERMINA		MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#0,SEM
+TERMINA		MOVE.B	#0,SEM
 			RTS
-ALTRIM		TST.B		ATTESA_C
-			BEQ		TERMINA
-			BRA		SVEGC
 
 
 *ISR PER INTERRUPT LIVELLO 4 LEGATA ALLA RICEZIONE SULLA PIA, AUTOVETTORE 28 = ((24 + 4)*4). 
 *IN ROM A $70, PUNTA AD INDIRIZZO $8900
 			ORG		$8900
-INT4			JSR		ISR_PIA_RIC
-			RTE
-
-ISR_PIA_RIC		TAS		SEM
-			BEQ		CONT4
-			MOVE.B	#1,ATTESA_C			*C si mette in attesa
-			RTS
-CONT4			MOVEM.L	D0-D5/A0-A5,-(A7)
+INT4			MOVEM.L	D0-D5/A0-A5,-(A7)
 			MOVEA.L	#PIADA,A0
 			MOVE.B	(A0),D0				*riceve ma non memorizza
 			MOVE.B	NCRC,D1
@@ -107,16 +119,29 @@ CONT4			MOVEM.L	D0-D5/A0-A5,-(A7)
 			MOVE.B	D1,NCRC
 			CMP.B		#2,D1
 			BNE		AT4
-			MOVE.B	#1,FLAG_T			*mette FLAG_T ad 1
-			TST.B		ATTESA_A
-			BNE		WKUP
+			JSR		SET_FLAG
 AT4			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#0,SEM			*unlock
+			RTE
+
+SET_FLAG		TAS		SEM
+			BEQ		CONT4
+			MOVE.B	#1,ATT_C			*C si mette in attesa
 			RTS
-WKUP			MOVEM.L	(A7)+,D0-D5/A0-A5
-			MOVE.B	#0,ATTESA_A
+CONT4			MOVE.B	#1,FLAG_T			*mette FLAG_T ad 1
+			TST.B		ATT_A_0
+			BNE		WKUP0
+			TST.B		ATT_A_1
+			BNE		WKUP1
 			MOVE.B	#0,SEM
-			JSR		ISR_USART_RIC
+			RTS
+WKUP0		MOVE.B	#0,ATT_A_0
+			MOVE.B	#0,SEM
+			JSR		CHECK0
+			RTS
+
+WKUP1		MOVE.B	#0,ATT_A_1
+			MOVE.B	#0,SEM
+			JSR		CHECK1
 			RTS
 
 			ORG		$8000				*area dati
@@ -126,7 +151,10 @@ FLAG_T		DC.B		0				*flag termina
 SEM			DC.B		0
 NCRA			DC.B		0				*numero di caratteri ricevuti da A
 NCRC			DC.B		0				*numeri di caratteri ricevuti da C
-ATTESA_A		DC.B		0
-ATTESA_C		DC.B		0
+ATT_A_0		DC.B		0
+ATT_A_1		DC.B		0
+ATT_C			DC.B		0
 NMRA			DC.B		0				*numero di messaggi ricevuti da A
 			END		MAIN
+
+

@@ -23,113 +23,139 @@
 00008330                                    23  *ISR PER INTERRUPT LIVELLO 3 LEGATA ALLA RICEZIONE SULLA USART, AUTOVETTORE 27 = ((24 + 3)*4). 
 00008330                                    24  *IN ROM A $6C, PUNTA AD INDIRIZZO $8700
 00008700                                    25  			ORG		$8700
-00008700  4EB9 00008708                     26  INT3			JSR		ISR_USART_RIC
-00008706  4E73                              27  			RTE
-00008708                                    28  
-00008708  4AF9 00008001                     29  ISR_USART_RIC	TAS		SEM
-0000870E  6700 000C                         30  			BEQ		CONTIN
-00008712  13FC 0001 00008004                31  			MOVE.B	#1,ATTESA_A
-0000871A  4E75                              32  			RTS
-0000871C  4A39 00008002                     33  CONTIN		TST.B		NCRA				*se non ha ricevuto neanche un carattere controlla il FLAG_T, altrimenti
-00008722  6600 001A                         34  			BNE		PROS				*è in ricezione e deve terminare la ricezione dell'intero messaggio
-00008726  4A39 00008000                     35  			TST.B		FLAG_T
-0000872C  6700 0010                         36  			BEQ		PROS
-00008730  11FC 0024 2005                    37  			MOVE.B	#%00100100,PIACA		*nel caso in cui è diverso da 0 disabilita le interrupt
-00008736  11FC 00FF 2003                    38  			MOVE.B	#$FF,USARTD			*disabilita USART
-0000873C  4E75                              39  			RTS
-0000873E  48E7 FCFC                         40  PROS			MOVEM.L	D0-D5/A0-A5,-(A7)		*salva registri che "sporca"
-00008742  207C 00002002                     41  			MOVEA.L	#USARTP,A0
-00008748                                    42  
-00008748  1628 0001                         43  			MOVE.B	1(A0),D3			*controlla se si è verificato qualche errore e in caso affermativo ripristina
-0000874C  0203 0038                         44  			ANDI.B		#$38,D3			*i flag di errore dal registro di stato
-00008750  6700 0008                         45  			BEQ		NOERR
-00008754  117C 0037 0001                    46  			MOVE.B	#$37,1(A0)
-0000875A  1010                              47  NOERR		MOVE.B	(A0),D0				*il carattere è ricevuto ma non lo memorizza
-0000875C                                    48  
-0000875C  1239 00008002                     49  			MOVE.B	NCRA,D1
-00008762  5201                              50  			ADDI.B		#1,D1	
-00008764  13C1 00008002                     51  			MOVE.B	D1,NCRA
-0000876A  B23C 0004                         52  			CMP.B		#N,D1
-0000876E  6600 009C                         53  			BNE		ALTRIM
-00008772  B03C 0000                         54  			CMP.B		#0,D0
-00008776  6600 0014                         55  			BNE		AVANTI2
-0000877A  4CDF 3F3F                         56  			MOVEM.L	(A7)+,D0-D5/A0-A5
-0000877E  11FC 0024 2005                    57  			MOVE.B	#%00100100,PIACA
-00008784  11FC 00FF 2003                    58  			MOVE.B	#$FF,USARTD
-0000878A  4E75                              59  			RTS
-0000878C  1439 00008006                     60  AVANTI2		MOVE.B	NMRA,D2
-00008792  5202                              61  			ADDI.B		#1,D2
-00008794  13C2 00008006                     62  			MOVE.B	D2,NMRA
-0000879A  B43C 0003                         63  			CMP.B		#M,D2
-0000879E  6600 0014                         64  			BNE		ALTR2
-000087A2  4CDF 3F3F                         65  			MOVEM.L	(A7)+,D0-D5/A0-A5
-000087A6  11FC 0024 2005                    66  			MOVE.B	#%00100100,PIACA
-000087AC  11FC 00FF 2003                    67  			MOVE.B	#$FF,USARTD
-000087B2  4E75                              68  			RTS
-000087B4  13FC 0000 00008002                69  ALTR2			MOVE.B	#0,NCRA			*azzera il numero di caratteri ricevuti da A
-000087BC  4A39 00008000                     70  			TST.B		FLAG_T
-000087C2  6700 0014                         71  			BEQ		PROS2
-000087C6  4CDF 3F3F                         72  			MOVEM.L	(A7)+,D0-D5/A0-A5
-000087CA  11FC 0024 2005                    73  			MOVE.B	#%00100100,PIACA
-000087D0  11FC 00FF 2003                    74  			MOVE.B	#$FF,USARTD
-000087D6  4E75                              75  			RTS
-000087D8  4A39 00008005                     76  PROS2			TST.B		ATTESA_C
-000087DE  6700 001E                         77  			BEQ		TERMINA
-000087E2                                    78  SVEGC									*C è in attesa è viene svegliato
-000087E2  4CDF 3F3F                         79  			MOVEM.L	(A7)+,D0-D5/A0-A5
-000087E6  13FC 0000 00008005                80  			MOVE.B	#0,ATTESA_C
-000087EE  13FC 0000 00008001                81  			MOVE.B	#0,SEM
-000087F6  4EB9 00008908                     82  			JSR		ISR_PIA_RIC
-000087FC  4E75                              83  			RTS
-000087FE  4CDF 3F3F                         84  TERMINA		MOVEM.L	(A7)+,D0-D5/A0-A5
-00008802  13FC 0000 00008001                85  			MOVE.B	#0,SEM
-0000880A  4E75                              86  			RTS
-0000880C  4A39 00008005                     87  ALTRIM		TST.B		ATTESA_C
-00008812  67EA                              88  			BEQ		TERMINA
-00008814  60CC                              89  			BRA		SVEGC
-00008816                                    90  
-00008816                                    91  
-00008816                                    92  *ISR PER INTERRUPT LIVELLO 4 LEGATA ALLA RICEZIONE SULLA PIA, AUTOVETTORE 28 = ((24 + 4)*4). 
-00008816                                    93  *IN ROM A $70, PUNTA AD INDIRIZZO $8900
-00008900                                    94  			ORG		$8900
-00008900  4EB9 00008908                     95  INT4			JSR		ISR_PIA_RIC
-00008906  4E73                              96  			RTE
-00008908                                    97  
-00008908  4AF9 00008001                     98  ISR_PIA_RIC		TAS		SEM
-0000890E  6700 000C                         99  			BEQ		CONT4
-00008912  13FC 0001 00008005               100  			MOVE.B	#1,ATTESA_C			*C si mette in attesa
-0000891A  4E75                             101  			RTS
-0000891C  48E7 FCFC                        102  CONT4			MOVEM.L	D0-D5/A0-A5,-(A7)
-00008920  207C 00002004                    103  			MOVEA.L	#PIADA,A0
-00008926  1010                             104  			MOVE.B	(A0),D0				*riceve ma non memorizza
-00008928  1239 00008003                    105  			MOVE.B	NCRC,D1
-0000892E  5201                             106  			ADDI.B		#1,D1
-00008930  13C1 00008003                    107  			MOVE.B	D1,NCRC
-00008936  B23C 0002                        108  			CMP.B		#2,D1
-0000893A  6600 0014                        109  			BNE		AT4
-0000893E  13FC 0001 00008000               110  			MOVE.B	#1,FLAG_T			*mette FLAG_T ad 1
-00008946  4A39 00008004                    111  			TST.B		ATTESA_A
-0000894C  6600 0010                        112  			BNE		WKUP
-00008950  4CDF 3F3F                        113  AT4			MOVEM.L	(A7)+,D0-D5/A0-A5
-00008954  13FC 0000 00008001               114  			MOVE.B	#0,SEM			*unlock
-0000895C  4E75                             115  			RTS
-0000895E  4CDF 3F3F                        116  WKUP			MOVEM.L	(A7)+,D0-D5/A0-A5
-00008962  13FC 0000 00008004               117  			MOVE.B	#0,ATTESA_A
-0000896A  13FC 0000 00008001               118  			MOVE.B	#0,SEM
-00008972  4EB9 00008708                    119  			JSR		ISR_USART_RIC
-00008978  4E75                             120  			RTS
-0000897A                                   121  
-00008000                                   122  			ORG		$8000				*area dati
-00008000  =00000003                        123  M			EQU		3				*numero messaggi
-00008000  =00000004                        124  N			EQU		4				*lunghezza mmessaggio
-00008000  00                               125  FLAG_T		DC.B		0				*flag termina
-00008001  00                               126  SEM			DC.B		0
-00008002  00                               127  NCRA			DC.B		0				*numero di caratteri ricevuti da A
-00008003  00                               128  NCRC			DC.B		0				*numeri di caratteri ricevuti da C
-00008004  00                               129  ATTESA_A		DC.B		0
-00008005  00                               130  ATTESA_C		DC.B		0
-00008006  00                               131  NMRA			DC.B		0				*numero di messaggi ricevuti da A
-00008007                                   132  			END		MAIN
+00008700  4A39 00008002                     26  INT3			TST.B		NCRA				*se non ha ricevuto neanche un carattere controlla il FLAG_T, altrimenti
+00008706  6600 000A                         27  			BNE		PROS				*è in ricezione e deve terminare la ricezione dell'intero messaggio
+0000870A  4EB9 0000871A                     28  			JSR		CHECK0
+00008710  4E73                              29  			RTE
+00008712  4EB9 00008766                     30  PROS			JSR		USART_RIC
+00008718  4E73                              31  			RTE
+0000871A                                    32  
+0000871A                                    33  
+0000871A  4AF9 00008001                     34  CHECK0		TAS		SEM
+00008720  6700 000C                         35  			BEQ		CONTIN
+00008724  13FC 0001 00008004                36  			MOVE.B	#1,ATT_A_0
+0000872C  4E75                              37  			RTS
+0000872E  4A39 00008000                     38  CONTIN		TST.B		FLAG_T
+00008734  6700 0012                         39  			BEQ		PROS0
+00008738  4EB9 00008758                     40  			JSR		DISABILITA
+0000873E  13FC 0000 00008001                41  			MOVE.B	#0,SEM
+00008746  4E75                              42  			RTS
+00008748  13FC 0000 00008001                43  PROS0			MOVE.B	#0,SEM
+00008750  4EB9 00008766                     44  			JSR		USART_RIC
+00008756  4E75                              45  			RTS
+00008758                                    46  
+00008758  11FC 0024 2005                    47  DISABILITA		MOVE.B	#%00100100,PIACA		*disabilita le interrupt pia
+0000875E  11FC 00FF 2003                    48  			MOVE.B	#$FF,USARTD			*disabilita USART
+00008764  4E75                              49  			RTS
+00008766                                    50  
+00008766  48E7 FCFC                         51  USART_RIC		MOVEM.L	D0-D5/A0-A5,-(A7)		*salva registri che "sporca"
+0000876A  207C 00002002                     52  			MOVEA.L	#USARTP,A0
+00008770                                    53  
+00008770  1628 0001                         54  			MOVE.B	1(A0),D3			*controlla se si è verificato qualche errore e in caso affermativo ripristina
+00008774  0203 0038                         55  			ANDI.B		#$38,D3			*i flag di errore dal registro di stato
+00008778  6700 0008                         56  			BEQ		NOERR
+0000877C  117C 0037 0001                    57  			MOVE.B	#$37,1(A0)
+00008782  1010                              58  NOERR		MOVE.B	(A0),D0				*il carattere è ricevuto ma non lo memorizza
+00008784                                    59  
+00008784  1239 00008002                     60  			MOVE.B	NCRA,D1
+0000878A  5201                              61  			ADDI.B		#1,D1	
+0000878C  13C1 00008002                     62  			MOVE.B	D1,NCRA
+00008792  B23C 0004                         63  			CMP.B		#N,D1
+00008796  6600 004C                         64  			BNE		ALTRIM
+0000879A  B03C 0000                         65  			CMP.B		#0,D0
+0000879E  6600 000E                         66  			BNE		AVANTI2
+000087A2  4CDF 3F3F                         67  			MOVEM.L	(A7)+,D0-D5/A0-A5
+000087A6  4EB9 00008758                     68  			JSR		DISABILITA
+000087AC  4E75                              69  			RTS
+000087AE  1439 00008007                     70  AVANTI2		MOVE.B	NMRA,D2
+000087B4  5202                              71  			ADDI.B		#1,D2
+000087B6  13C2 00008007                     72  			MOVE.B	D2,NMRA
+000087BC  B43C 0003                         73  			CMP.B		#M,D2
+000087C0  6600 000E                         74  			BNE		ALTR2
+000087C4  4CDF 3F3F                         75  			MOVEM.L	(A7)+,D0-D5/A0-A5
+000087C8  4EB9 00008758                     76  			JSR		DISABILITA
+000087CE  4E75                              77  			RTS
+000087D0  13FC 0000 00008002                78  ALTR2			MOVE.B	#0,NCRA			*azzera il numero di caratteri ricevuti da A
+000087D8  4CDF 3F3F                         79  			MOVEM.L	(A7)+,D0-D5/A0-A5
+000087DC  4EB9 000087FC                     80  			JSR		CHECK1
+000087E2  4E75                              81  			RTS
+000087E4  4CDF 3F3F                         82  ALTRIM		MOVEM.L	(A7)+,D0-D5/A0-A5
+000087E8  4AF9 00008001                     83  			TAS		SEM
+000087EE  6700 0004                         84  			BEQ		GOON
+000087F2  4E75                              85  			RTS
+000087F4  4EB9 0000882A                     86  GOON			JSR		CHECKC
+000087FA  4E75                              87  			RTS
+000087FC                                    88  
+000087FC  4AF9 00008001                     89  CHECK1		TAS		SEM
+00008802  6700 000C                         90  			BEQ		CNTN
+00008806  13FC 0000 00008005                91  			MOVE.B	#0,ATT_A_1
+0000880E  4E75                              92  			RTS
+00008810  4A39 00008000                     93  CNTN			TST.B		FLAG_T
+00008816  6700 000A                         94  			BEQ		PROS2
+0000881A  4EB9 00008758                     95  			JSR		DISABILITA
+00008820  4E75                              96  			RTS
+00008822  4EB9 0000882A                     97  PROS2			JSR		CHECKC
+00008828  4E75                              98  			RTS
+0000882A                                    99  
+0000882A  4A39 00008006                    100  CHECKC		TST.B		ATT_C
+00008830  6700 001A                        101  			BEQ		TERMINA
+00008834                                   102  SVEGC									*C è in attesa è viene svegliato
+00008834  13FC 0000 00008006               103  			MOVE.B	#0,ATT_C
+0000883C  13FC 0000 00008001               104  			MOVE.B	#0,SEM
+00008844  4EB9 0000892E                    105  			JSR		SET_FLAG
+0000884A  4E75                             106  			RTS
+0000884C  13FC 0000 00008001               107  TERMINA		MOVE.B	#0,SEM
+00008854  4E75                             108  			RTS
+00008856                                   109  
+00008856                                   110  
+00008856                                   111  *ISR PER INTERRUPT LIVELLO 4 LEGATA ALLA RICEZIONE SULLA PIA, AUTOVETTORE 28 = ((24 + 4)*4). 
+00008856                                   112  *IN ROM A $70, PUNTA AD INDIRIZZO $8900
+00008900                                   113  			ORG		$8900
+00008900  48E7 FCFC                        114  INT4			MOVEM.L	D0-D5/A0-A5,-(A7)
+00008904  207C 00002004                    115  			MOVEA.L	#PIADA,A0
+0000890A  1010                             116  			MOVE.B	(A0),D0				*riceve ma non memorizza
+0000890C  1239 00008003                    117  			MOVE.B	NCRC,D1
+00008912  5201                             118  			ADDI.B		#1,D1
+00008914  13C1 00008003                    119  			MOVE.B	D1,NCRC
+0000891A  B23C 0002                        120  			CMP.B		#2,D1
+0000891E  6600 0008                        121  			BNE		AT4
+00008922  4EB9 0000892E                    122  			JSR		SET_FLAG
+00008928  4CDF 3F3F                        123  AT4			MOVEM.L	(A7)+,D0-D5/A0-A5
+0000892C  4E73                             124  			RTE
+0000892E                                   125  
+0000892E  4AF9 00008001                    126  SET_FLAG		TAS		SEM
+00008934  6700 000C                        127  			BEQ		CONT4
+00008938  13FC 0001 00008006               128  			MOVE.B	#1,ATT_C			*C si mette in attesa
+00008940  4E75                             129  			RTS
+00008942  13FC 0001 00008000               130  CONT4			MOVE.B	#1,FLAG_T			*mette FLAG_T ad 1
+0000894A  4A39 00008004                    131  			TST.B		ATT_A_0
+00008950  6600 0016                        132  			BNE		WKUP0
+00008954  4A39 00008005                    133  			TST.B		ATT_A_1
+0000895A  6600 0024                        134  			BNE		WKUP1
+0000895E  13FC 0000 00008001               135  			MOVE.B	#0,SEM
+00008966  4E75                             136  			RTS
+00008968  13FC 0000 00008004               137  WKUP0		MOVE.B	#0,ATT_A_0
+00008970  13FC 0000 00008001               138  			MOVE.B	#0,SEM
+00008978  4EB9 0000871A                    139  			JSR		CHECK0
+0000897E  4E75                             140  			RTS
+00008980                                   141  
+00008980  13FC 0000 00008005               142  WKUP1		MOVE.B	#0,ATT_A_1
+00008988  13FC 0000 00008001               143  			MOVE.B	#0,SEM
+00008990  4EB9 000087FC                    144  			JSR		CHECK1
+00008996  4E75                             145  			RTS
+00008998                                   146  
+00008000                                   147  			ORG		$8000				*area dati
+00008000  =00000003                        148  M			EQU		3				*numero messaggi
+00008000  =00000004                        149  N			EQU		4				*lunghezza mmessaggio
+00008000  00                               150  FLAG_T		DC.B		0				*flag termina
+00008001  00                               151  SEM			DC.B		0
+00008002  00                               152  NCRA			DC.B		0				*numero di caratteri ricevuti da A
+00008003  00                               153  NCRC			DC.B		0				*numeri di caratteri ricevuti da C
+00008004  00                               154  ATT_A_0		DC.B		0
+00008005  00                               155  ATT_A_1		DC.B		0
+00008006  00                               156  ATT_C			DC.B		0
+00008007  00                               157  NMRA			DC.B		0				*numero di messaggi ricevuti da A
+00008008                                   158  			END		MAIN
 
 No errors detected
 No warnings generated
